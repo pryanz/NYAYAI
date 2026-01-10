@@ -1,0 +1,8 @@
+transformers
+langchain
+chromadb
+easyocr
+pymupdf
+opencv-python
+ultralytics
+python-dotenv

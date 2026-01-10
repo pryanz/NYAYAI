@@ -1,0 +1,16 @@
+# Data and Models
+data/raw/
+data/processed/
+models/
+*.bin
+*.pt
+
+# Docker/System
+.env
+__pycache__/
+.pytest_cache/
+.DS_Store
+
+# Database
+postgres_data/
+chroma_db/
