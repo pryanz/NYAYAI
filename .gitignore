@@ -1,6 +1,7 @@
 # Data and Models
 data/raw/
 data/processed/
+data/db
 models/
 *.bin
 *.pt
