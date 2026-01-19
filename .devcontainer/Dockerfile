@@ -1,27 +1,55 @@
-FROM python:3.10-slim
+# -------------------------------
+# Base Image (CUDA 12.1 + Python compatible)
+# -------------------------------
+FROM nvidia/cuda:12.1.1-runtime-ubuntu22.04
 
-# Install System Dependencies
-# We use libgl1 instead of libgl1-mesa-glx for modern Debian compatibility
-RUN apt-get update && apt-get install -y \
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# -------------------------------
+# System Dependencies (Python + OCR + CV)
+# -------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.10 \
+    python3-pip \
+    python3-dev \
+    git \
+    curl \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    tesseract-ocr-hin \
+    poppler-utils \
+    libleptonica-dev \
     libgl1 \
     libglib2.0-0 \
-    tesseract-ocr \
-    poppler-utils \
-    git \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Add Hindi support for Tesseract
-RUN apt-get update && apt-get install -y \
-    tesseract-ocr-hin \
-    tesseract-ocr-eng \
-    poppler-utils \
-    libgl1 # Required for OpenCV
+# Make python default
+RUN ln -s /usr/bin/python3 /usr/bin/python
 
+# -------------------------------
+# Workdir
+# -------------------------------
 WORKDIR /workspaces/NyayAI
 
-# Create a dummy requirements file so the build doesn't fail
-RUN touch requirements.txt
+# -------------------------------
+# Python Dependencies
+# -------------------------------
+COPY requirements.txt .
 
-# Install Python Libraries
-RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
-RUN pip install --no-cache-dir transformers langchain chromadb easyocr pymupdf opencv-python ultralytics python-dotenv
+RUN python -m pip install --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
+
+# -------------------------------
+# Application Code
+# -------------------------------
+COPY . .
+
+# -------------------------------
+# Default Command
+# -------------------------------
+CMD ["sleep", "infinity"]

@@ -1,0 +1,21 @@
+# Databases / volumes
+data/
+db/
+data/db/
+data/db/postgres/
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# VS Code
+.devcontainer/
+.vscode/
+
+# OS junk
+.DS_Store

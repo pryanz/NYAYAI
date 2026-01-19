@@ -1,4 +1,5 @@
 version: '3.8'
+
 services:
   db:
     restart: always
@@ -9,7 +10,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - ./data/db/postgres:/var/lib/postgresql/data
-    
 
   vector-store:
     image: chromadb/chroma
@@ -23,13 +23,21 @@ services:
     build:
       context: .
       dockerfile: .devcontainer/Dockerfile
-    tty: true           # This keeps the container running
-    stdin_open: true    # This keeps the input open  
+
+    tty: true
+    stdin_open: true
+
     volumes:
       - .:/workspaces/NyayAI
+
     env_file: .env
+
     depends_on:
       - db
       - vector-store
 
-      
+    # 🔑 GPU ENABLED — DevContainer compatible way
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility

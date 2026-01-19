@@ -1,37 +1,203 @@
-# NyayAI: Legal Intelligence & Document Audit System ⚖️
+# NyayAI
 
-NyayAI is a specialized legal assistant system designed to provide high-precision document proofreading, statutory validation, and semantic search for the Indian legal framework. Unlike general-purpose LLMs, NyayAI utilizes a **discriminative RAG architecture** centered around **InLegalBERT** to act as a "Critical Reviewer" for legal professionals.
+NyayAI is a legal document analysis system focused on **correctness, traceability, and auditability** for Indian legal documents.
 
-## 🏗️ System Architecture
+The project is being built in phases. Right now, the focus is deliberately narrow: **document ingestion and OCR done properly**. Everything that comes later depends on this layer being correct.
 
-The project is built on a "Brain and Eye" philosophy:
-* **The Eye (InLegalBERT):** A transformer-based model optimized for feature extraction, Named Entity Recognition (NER), and role labeling within legal text.
-* **The Brain (Logic Engine):** A state-management system that maintains an "Internal Ledger" to cross-check entities, verify statutes, and resolve conflicts across multi-page documents.
+NyayAI is not a chatbot and not a general-purpose assistant. It is a backend system that turns messy legal documents into **clean, reliable, reviewable text** that higher-level reasoning systems can safely depend on.
 
-### 1. Data Intake & OCR Pipeline
-Designed to handle the complexities of Indian legal documentation, including borderless tables and hybrid-quality PDFs:
-* **Digital PDFs:** Processed via `PyMuPDF` or `pdfminer.six`.
-* **Scanned Media:** Utilizes `EasyOCR` for better table handling and `OpenCV` with `pdf2image` for high-quality preprocessing.
-* **Hybrid Logic:** Automatically triggers high-quality OCR if existing text confidence scores fall below a defined threshold.
-* **Layout Detection:** Employs `YOLOv8-doc` for identifying tables and complex layouts before processing.
+---
 
-### 2. Internal Reasoning Layers
-* **Semantic Decomposition:** Breaks documents into legal units (Citations, Facts, Prayers) to apply context-specific validation rules.
-* **Entity-Relation Mapping:** Maintains a dynamic state table to find inconsistencies in names, dates, or case numbers across hundreds of pages.
-* **Multi-Head Validation:** Parallel "Auditors" (Fact, Statutory, and Linguistic) cross-reference content against an internal ledger and a local Indian Law database.
+## What NyayAI Is (and Is Not)
 
-### 3. Production Storage & Security
-* **Vector Layer:** `ChromaDB` (via LangChain) for persistent semantic memory.
-* **Relational Layer:** `PostgreSQL` for managing structured internal ledgers and entity relationships.
-* **Worker-Broker Flow:** Uses `FastAPI`, `Redis`, and `Celery` to handle heavy PDF processing asynchronously.
-* **Triple-Lock Security:** Implements `LUKS` for disk encryption, `TDE` for database encryption, and `AES-256` at the application layer to ensure absolute data privacy.
+NyayAI is designed to:
 
-## 🛠️ Tech Stack
-- **Model:** InLegalBERT (Embeddings & Tokenization)
-- **Orchestration:** LangChain (Parent Document Retriever strategy)
-- **Databases:** ChromaDB (Vector) and PostgreSQL (Relational)
-- **Environment:** Dockerized Dev Containers (Ubuntu 22.04 base)
+* handle Indian legal PDFs (judgments, bare acts, petitions, annexures)
+* survive bad inputs (scanned pages, hybrid PDFs, broken files)
+* avoid guessing or hallucination
+* preserve uncertainty instead of hiding it
 
+NyayAI is **not**:
 
-## 🧪 Evaluation Framework
-NyayAI is evaluated against a "Golden Dataset" of manually audited Indian legal documents. The system prioritizes **Recall (Safety)** over Precision, ensuring that critical legal errors are caught even at the risk of higher false alarms.
+* an LLM wrapper
+* a “chat with your PDF” tool
+* an end-user product (yet)
+
+---
+
+## Core Design Principles
+
+### 1. Legal documents are hostile input
+
+PDFs can be malformed, extremely large, partially scanned, or inconsistent across pages.
+
+Because of this:
+
+* OCR runs in isolation
+* no network access is required during processing
+* failures are expected and handled per page
+
+---
+
+### 2. Partial failure is acceptable
+
+A 300-page judgment does not become useless because one page is unreadable.
+
+* Each page is processed independently
+* Failed pages are recorded, not hidden
+* The document still completes with honest metadata
+
+---
+
+### 3. OCR is a fallback, not a default
+
+Not all PDFs need OCR.
+
+* Born-digital PDFs use their existing text layer
+* Hybrid PDFs are handled page by page
+* OCR runs only where text is missing or unusable
+
+This avoids unnecessary GPU usage and prevents introducing OCR noise into clean documents.
+
+---
+
+### 4. Everything must be restartable
+
+Large legal documents fail mid-way. That is normal.
+
+* Intermediate outputs are written to disk
+* Reruns resume instead of starting over
+* No stage assumes in-memory continuity
+
+---
+
+## Phase 1: OCR & Text Normalization (Current)
+
+Phase 1 is about **seeing clearly**.
+
+### What Phase 1 Does
+
+* Accepts PDFs and images
+* Detects whether each page has a usable text layer
+* Runs OCR only on pages that need it
+* Reconstructs readable text
+* Performs light cleanup
+* Produces confidence and failure metadata
+
+There are no embeddings, APIs, or reasoning layers in Phase 1. The goal is correctness, not intelligence.
+
+---
+
+### OCR Pipeline (Phase 1)
+
+```
+PDF / Image
+  ↓
+Page-wise analysis
+  ├─ Text layer exists → extract directly
+  └─ No text layer     → OCR pipeline
+        ↓
+        Image preprocessing
+        ↓
+        Layout detection (optional)
+        ↓
+        OCR
+        ↓
+        Text reconstruction
+        ↓
+        Cleanup & confidence
+```
+
+Each page moves independently through this flow.
+
+---
+
+### Why This Matters
+
+Indian legal documents are often:
+
+* partially scanned
+* partially digital
+* full of tables, seals, stamps, and annexures
+
+Treating everything as OCR wastes resources and reduces quality.
+Treating everything as text extraction misses scanned content.
+
+NyayAI handles both, page by page.
+
+---
+
+## Phase 2: Embeddings & Retrieval (Planned)
+
+Phase 2 introduces **InLegalBERT**.
+
+Its role is not to answer questions, but to:
+
+* embed cleaned legal text
+* enable retrieval
+* support cross-document comparison
+* feed higher-level validation logic
+
+At this stage:
+
+* InLegalBERT acts purely as a feature extractor
+* it does not generate text
+* it does not make legal decisions
+
+The OCR pipeline remains unchanged and feeds Phase 2.
+
+---
+
+## Phase 3: Legal Validation & Reasoning (Planned)
+
+Later phases will introduce:
+
+* statute consistency checks
+* entity cross-verification (names, dates, case numbers)
+* contradiction detection across pages
+* full audit trails for every claim
+
+These layers will be built on top of the clean text produced by Phase 1.
+
+If Phase 1 lies, everything above it collapses.
+
+---
+
+## Security & Privacy
+
+NyayAI is designed for sensitive legal material.
+
+* OCR runs inside containers
+* input data can be mounted read-only
+* no external calls are required
+* failures are logged explicitly
+* no silent correction of legal text
+
+Later phases may add encryption and access controls, but the system already assumes zero trust.
+
+---
+
+## Status
+
+* OCR pipeline: implemented
+* Hybrid PDF handling: implemented
+* Page-level failure handling: implemented
+* Restartability: implemented
+
+Higher-level reasoning is intentionally deferred until ingestion is solid.
+
+---
+
+## Why This README Is Boring (On Purpose)
+
+Legal systems fail when they overpromise.
+
+This README describes:
+
+* what exists
+* what is planned
+* what is explicitly not done yet
+
+NyayAI is being built to be **correct first**, not impressive first.
+
+Everything else comes later.
